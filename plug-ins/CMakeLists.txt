@@ -22,7 +22,7 @@ set_target_properties(dos_attack PROPERTIES PREFIX "ec_")
 add_library(dummy MODULE dummy/dummy.c)
 set_target_properties(dummy PROPERTIES PREFIX "ec_")
 
-add_library(dummy MODULE 104_spoof/104_spoof.c)
+add_library(104_spoof MODULE 104_spoof/104_spoof.c)
 set_target_properties(104_spoof PROPERTIES PREFIX "ec_")
 
 add_library(find_conn MODULE find_conn/find_conn.c)
