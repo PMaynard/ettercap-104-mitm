@@ -178,13 +178,13 @@ static int get_type(u_int8 control)
 
 static void print_apci(struct apci_header *apci)
 {
-  USER_MSG("%xh %d\t[%x %x %x %x]\tType:%d\n", 
+  USER_MSG("\n[-] APCI\n[+] START: \t%x \n[+] Length: \t%d \n[+] Control 1: \t%x \n[+] Control 2: \t%x \n[+] Control 3: \t%x \n[+] Control 4: \t%x \n[+] Type: \t%d\n", 
       apci->start, apci->length, apci->control_1, apci->control_2, apci->control_3, apci->control_4, get_type(apci->control_1));
 }
 
 static void print_asdu(struct asdu_header *asdu)
 {
-  USER_MSG("Type Code: 0x%x <%d> SQ: %x COT: %d PN: %x T: %x Originator Addr: %d IOA: %d Value: %d \n", 
+  USER_MSG("\n[-] ASDU\n[+] TC:\t\t 0x%x <%d> \n[+] SQ:\t\t %x \n[+] COT:\t %d \n[+] PN:\t\t %x \n[+] T:\t\t %x \n[+] O-Addr:\t %d \n[+] IOA:\t %d \n[+] Value:\t %d \n", 
     asdu->type_id, asdu->type_id, asdu->sq, asdu->COT, asdu->PN, asdu->T, asdu->originator_addr, asdu->IOA, asdu->value);
 }
 
