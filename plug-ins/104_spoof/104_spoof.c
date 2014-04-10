@@ -82,8 +82,10 @@ int plugin_load(void *);
 static int spoof_104_init(void *);
 static int spoof_104_fini(void *);
 
-static int get_type(u_int8 control);
 static void parse_tcp(struct packet_object *po);
+static int get_type(u_int8 control);
+static void print_apci(struct apci_header *apci);
+static void print_asdu(struct asdu_header *asdu);
 
 
 /* plugin operations */
