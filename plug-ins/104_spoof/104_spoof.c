@@ -198,8 +198,8 @@ static void parse_tcp(struct packet_object *po)
     po->flags ^= PO_DROPPED;
 
     /* Modify the value */
-    // asdu->COT = 0x2A;
-    asdu->spi = 0;
+    asdu->COT = 0x2A;
+    // asdu->spi = 0;
     memcpy(po->DATA.data, apci, sizeof(apci));
     memcpy(po->DATA.data + sizeof(struct apci_header), asdu, sizeof(asdu));
 
