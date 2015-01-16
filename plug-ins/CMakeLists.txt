@@ -25,6 +25,9 @@ set_target_properties(dummy PROPERTIES PREFIX "ec_")
 add_library(104_spoof MODULE 104_spoof/104_spoof.c)
 set_target_properties(104_spoof PROPERTIES PREFIX "ec_")
 
+add_library(104_snort_alert MODULE 104_snort_alert/104_snort_alert.c)
+set_target_properties(104_snort_alert PROPERTIES PREFIX "ec_")
+
 add_library(find_conn MODULE find_conn/find_conn.c)
 set_target_properties(find_conn PROPERTIES PREFIX "ec_")
 
@@ -123,6 +126,7 @@ mdns_spoof
 dos_attack
 dummy
 104_spoof
+104_snort_alert
 find_conn
 find_ettercap
 find_ip
@@ -163,6 +167,7 @@ install(TARGETS
             dos_attack
             dummy
 	    104_spoof
+	    104_snort_alert
             find_conn
             find_ettercap
             find_ip
