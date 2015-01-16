@@ -82,7 +82,7 @@ struct asdu_header {
 };
 
 static const char *triggers[] = {
-"0 INVALID_START", "1 SPON_COT", "2 INVALID_COT", "3 INVALID_COT_45", "4 INVALID_COT_01", "5 INVALID_COT_15", "6 INVALID_COT_32", "7 TYPE_ID_RESET", "8 BROADCAST_ADDRESS", "9 INVALID_LENGTH", "10 TYPE_ID_INVALID_CONTROL_DIR", "11 TYPE_ID_INVALID_MONITOR_DIR"
+"INVALID_START", "SPON_COT", "INVALID_COT", "INVALID_COT_45", "INVALID_COT_01", "INVALID_COT_15", "INVALID_COT_32", "TYPE_ID_RESET", "BROADCAST_ADDRESS", "INVALID_LENGTH", "TYPE_ID_INVALID_CONTROL_DIR", "TYPE_ID_INVALID_MONITOR_DIR"
 };
 
 int trigger = 0;
@@ -127,7 +127,7 @@ struct plugin_ops spoof_104_ops = {
 /* this function is called on plugin load */
 int plugin_load(void *handle) 
 {
-   DEBUG_MSG("Spoof 104 plugin load function.");
+   DEBUG_MSG("SNORT Alert: plugin load function.");
    /*
     *  in this fuction we MUST call the registration procedure that will set
     *  up the plugin according to the plugin_ops structure.
@@ -151,8 +151,6 @@ static int spoof_104_init(void *dummy)
     * hook_add(), in this case you have to set the
     * plugin type to PL_HOOK.
     */
-   
-   USER_MSG("Spoof 104: Plugin running...\n");
 
    hook_add(HOOK_PACKET_TCP, &parse_tcp);
 
@@ -174,7 +172,7 @@ static int spoof_104_fini(void *dummy)
     * init function or to remove hook added 
     * previously.
     */
-   USER_MSG("Spoof 104: Plugin finalization.\n");
+   USER_MSG("SNORT Alert: Plugin finalization.\n");
 
    hook_del(HOOK_PACKET_TCP, &parse_tcp); 
 
@@ -214,7 +212,7 @@ static void parse_tcp(struct packet_object *po)
       case INVALID_START:
       /* Trigger 6666601 */
       apci->start = 0x42;
-      USER_MSG("%s\n", triggers[INVALID_START]);
+      USER_MSG("[#] %s - #6666601 \n", triggers[INVALID_START]);
       break;
 
       case TYPE_ID_INVALID_CONTROL_DIR:
@@ -223,7 +221,7 @@ static void parse_tcp(struct packet_object *po)
         asdu->type_id = 0x1F;  /* 31 */
       }
       
-      USER_MSG("%s\n", triggers[TYPE_ID_INVALID_CONTROL_DIR]);
+      USER_MSG("[#] %s - #6666611 \n", triggers[TYPE_ID_INVALID_CONTROL_DIR]);
       break;
 
       case TYPE_ID_INVALID_MONITOR_DIR:
@@ -232,65 +230,65 @@ static void parse_tcp(struct packet_object *po)
         asdu->type_id = 0x7E;  /* 126 */
       }
 
-      USER_MSG("%s\n", triggers[TYPE_ID_INVALID_MONITOR_DIR]);
+      USER_MSG("[#] %s - #6666612 \n", triggers[TYPE_ID_INVALID_MONITOR_DIR]);
       break;
 
       case SPON_COT:
       /* Trigger 6666602 */
       asdu->COT = 0x03; /* Needs more packets to trigger */
-      USER_MSG("%s\n", triggers[SPON_COT]);
+      USER_MSG("[#] %s - #6666602 \n", triggers[SPON_COT]);
       break;
 
       case INVALID_COT:
       /* Trigger 6666617 - Default to catch and from the client. */ 
       asdu->COT = 0x2A;     /* Invalid */
-      USER_MSG("%s\n", triggers[INVALID_COT]);
+      USER_MSG("[#] %s - #6666617 \n", triggers[INVALID_COT]);
       break;
 
       case INVALID_COT_45:
       /* Trigger 6666618 */
       asdu->type_id = 0x2D; /* 45 */
       asdu->COT = 0x2A;     /* Invalid */
-      USER_MSG("%s\n", triggers[INVALID_COT_45]);
+      USER_MSG("[#] %s - #6666618 \n", triggers[INVALID_COT_45]);
       break;
 
       case INVALID_COT_01:
       /* Trigger 6666619 */
       asdu->type_id = 0x01; /* 01 */
       asdu->COT = 0x2A;     /* Invalid */
-      USER_MSG("%s\n", triggers[INVALID_COT_01]);
+      USER_MSG("[#] %s - #6666619 \n", triggers[INVALID_COT_01]);
       break;
 
       case INVALID_COT_15:
       /* Trigger 6666620 */
       asdu->type_id = 0xF; /* 15 */
       asdu->COT = 0x2A;     /* Invalid */
-      USER_MSG("%s\n", triggers[INVALID_COT_15]);
+      USER_MSG("[#] %s - #6666620 \n", triggers[INVALID_COT_15]);
       break;
 
       case INVALID_COT_32:
       /* Trigger 6666621 */
       asdu->type_id = 0x20; /* 32 */
       asdu->COT = 0x2A;     /* Invalid */
-      USER_MSG("%s\n", triggers[INVALID_COT_32]);
+      USER_MSG("[#] %s - #6666621 \n", triggers[INVALID_COT_32]);
       break;
 
       case TYPE_ID_RESET:
       /* Trigger 6666608 */
       asdu->type_id = RESET; 
-      USER_MSG("%s\n", triggers[TYPE_ID_RESET]);
+      USER_MSG("[#] %s - #6666608 \n", triggers[TYPE_ID_RESET]);
       break;
 
       case BROADCAST_ADDRESS:
       /* Trigger 6666609 */
       asdu->originator_addr = BROADCAST;
-      USER_MSG("%s\n", triggers[BROADCAST_ADDRESS]);
+      USER_MSG("[#] %s - #6666609 \n", triggers[BROADCAST_ADDRESS]);
       break;
 
       case INVALID_LENGTH:
       /*Trigger 6666613/15/16 - Causes the conenction the be reset WinPP's error. */
       apci->length = 15;
-      USER_MSG("%s\n", triggers[INVALID_LENGTH]);
+      USER_MSG("[#] %s - #6666613/15/16\n", triggers[INVALID_LENGTH]);
       break;
 
     }

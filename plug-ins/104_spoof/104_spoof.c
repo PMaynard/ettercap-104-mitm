@@ -173,6 +173,9 @@ static int spoof_104_fini(void *dummy)
 
 static void parse_tcp(struct packet_object *po)
 {
+  /* don't show packets while operating */
+  GBL_OPTIONS->quiet = 1;
+
   struct apci_header *apci;
   struct asdu_header *asdu;
   apci = (struct apci_header *)po->DATA.data;
