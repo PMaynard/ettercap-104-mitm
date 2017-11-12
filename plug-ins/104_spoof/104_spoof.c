@@ -42,6 +42,7 @@ enum {I_FORMAT, S_FORMAT, U_FORMAT};
 u_char START        = 0x68;
 u_char M_ME_TF_1    = 0x24;
 u_char M_SP_TB_1    = 0x1e;
+u_char M_SP_NA_1    = 0x01;
 
 struct apci_header {
   u_char start;
@@ -182,7 +183,7 @@ static void parse_tcp(struct packet_object *po)
   asdu = (struct asdu_header *)(apci + 1);
 
   /* We are interested in monitor packets of type M_SP_TB_1 */
-  if(START == apci->start && I_FORMAT == get_type(apci->control_1) && M_SP_TB_1 == asdu->type_id) {
+  if(START == apci->start && I_FORMAT == get_type(apci->control_1) && M_SP_NA_1 == asdu->type_id) {
 
     USER_MSG("=========================");
     USER_MSG("\nOld Packet\n");
@@ -202,7 +203,8 @@ static void parse_tcp(struct packet_object *po)
 
     /* Modify the value */
     // asdu->COT = 0x2A;
-    asdu->spi = 1;
+    // asdu->spi = 1;
+    asdu->T = 1; // Enable the test flag.
     memcpy(po->DATA.data, apci, sizeof(apci));
     memcpy(po->DATA.data + sizeof(struct apci_header), asdu, sizeof(asdu));
 

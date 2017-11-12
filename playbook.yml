@@ -1,0 +1,41 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+  - name: Install Requirements
+    apt: name={{ item }} state=present
+    with_items:
+      - tmux
+      - htop
+      - tshark
+      - build-essential
+      - debhelper
+      - bison
+      - check
+      - cmake
+      - flex
+      - ghostscript
+      - libbsd-dev
+      - libcurl4-openssl-dev
+      - libgtk2.0-dev
+      - libltdl-dev
+      - libluajit-5.1-dev
+      - libncurses5-dev
+      - libnet1-dev
+      - libpcap-dev
+      - libpcre3-dev
+      - libssl-dev
+      - libgtk-3-dev
+      - libgeoip-dev
+
+  - file: 
+      path: build
+      state: directory
+
+  - shell: cmake ../ 
+    args:
+      chdir: build
+
+  - shell: make install
+    args:
+      chdir: build
