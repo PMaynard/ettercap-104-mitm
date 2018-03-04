@@ -1,3 +1,20 @@
+Plugin used for the publication 'Towards Understanding Man-In-The-Middle Attacks on IEC 60870-5-104 SCADA Networks'
+
+@conference{
+ author   = "Peter Maynard and Kieran McLaughlin and Berthold Haberler",
+ title    = "Towards Understanding Man-In-The-Middle Attacks on IEC 60870-5-104 SCADA Networks",
+ journal  = "2nd International Symposium for ICS & SCADA Cyber Security Research",
+ year 	   = "2014",
+ doi 	   = "http://dx.doi.org/10.14236/ewic/ics-csr2014.5"
+}
+
+More information:
+
+https://petermaynard.co.uk/publication/towards-understanding-mitm-attacks-on-iec-608750-5-104-scada-networks/
+
+
+
+
 ==============================================================================
 ==============================================================================
 
